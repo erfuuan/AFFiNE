@@ -61,8 +61,7 @@ export const UserAvatar = () => {
         await avatarTrigger({
           avatar: reducedFile, // Pass the reducedFile directly to the avatarTrigger
         });
-        // XXX: This is a hack to force the user to update, since next-auth can not only use update function without params
-        await user.update({ name: user.name });
+        user.update();
         pushNotification({
           title: 'Update user avatar success',
           type: 'success',
@@ -82,8 +81,7 @@ export const UserAvatar = () => {
     async (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       await removeAvatarTrigger();
-      // XXX: This is a hack to force the user to update, since next-auth can not only use update function without params
-      user.update({ name: user.name }).catch(console.error);
+      user.update();
     },
     [removeAvatarTrigger, user]
   );
@@ -97,9 +95,9 @@ export const UserAvatar = () => {
       <Avatar
         size={56}
         name={user.name}
-        url={user.image}
+        url={user.avatarUrl}
         hoverIcon={<CameraIcon />}
-        onRemove={user.image ? handleRemoveUserAvatar : undefined}
+        onRemove={user.avatarUrl ? handleRemoveUserAvatar : undefined}
         avatarTooltipOptions={{ content: t['Click to replace photo']() }}
         removeTooltipOptions={{ content: t['Remove photo']() }}
         data-testid="user-setting-avatar"
@@ -121,7 +119,7 @@ export const AvatarAndName = () => {
     if (!allowUpdate) {
       return;
     }
-    user.update({ name: input }).catch(console.error);
+    user.update({ name: input });
   }, [allowUpdate, input, user]);
 
   return (
@@ -222,9 +220,9 @@ export const AccountSetting: FC = () => {
       openModal: true,
       state: 'sendEmail',
       email: user.email,
-      emailType: 'changeEmail',
+      emailType: user.emailVerified ? 'changeEmail' : 'verifyEmail',
     });
-  }, [setAuthModal, user.email]);
+  }, [setAuthModal, user.email, user.emailVerified]);
 
   const onPasswordButtonClick = useCallback(() => {
     setAuthModal({
@@ -249,7 +247,9 @@ export const AccountSetting: FC = () => {
       <AvatarAndName />
       <SettingRow name={t['com.affine.settings.email']()} desc={user.email}>
         <Button onClick={onChangeEmail} className={styles.button}>
-          {t['com.affine.settings.email.action']()}
+          {user.emailVerified
+            ? t['com.affine.settings.email.action.change']()
+            : t['com.affine.settings.email.action.verify']()}
         </Button>
       </SettingRow>
       <SettingRow

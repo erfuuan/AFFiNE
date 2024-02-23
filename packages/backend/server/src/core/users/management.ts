@@ -6,22 +6,19 @@ import {
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CloudThrottlerGuard, Throttle } from '../../fundamentals';
-import { Auth, CurrentUser } from '../auth/guard';
-import { AuthService } from '../auth/service';
+import { CurrentUser } from '../auth/current-user';
 import { FeatureManagementService } from '../features';
+import { UsersService } from './service';
 import { UserType } from './types';
-import { UsersService } from './users';
 
 /**
  * User resolver
  * All op rate limit: 10 req/m
  */
 @UseGuards(CloudThrottlerGuard)
-@Auth()
 @Resolver(() => UserType)
 export class UserManagementResolver {
   constructor(
-    private readonly auth: AuthService,
     private readonly users: UsersService,
     private readonly feature: FeatureManagementService
   ) {}
@@ -44,7 +41,7 @@ export class UserManagementResolver {
     if (user) {
       return this.feature.addEarlyAccess(user.id);
     } else {
-      const user = await this.auth.createAnonymousUser(email);
+      const user = await this.users.createAnonymousUser(email);
       return this.feature.addEarlyAccess(user.id);
     }
   }
@@ -79,13 +76,21 @@ export class UserManagementResolver {
   @Query(() => [UserType])
   async earlyAccessUsers(
     @Context() ctx: { isAdminQuery: boolean },
-    @CurrentUser() user: UserType
+    @CurrentUser() user: CurrentUser
   ): Promise<UserType[]> {
     if (!this.feature.isStaff(user.email)) {
       throw new ForbiddenException('You are not allowed to do this');
     }
     // allow query other user's subscription
     ctx.isAdminQuery = true;
-    return this.feature.listEarlyAccess();
+    return this.feature.listEarlyAccess().then(users => {
+      return users.map(user => {
+        return {
+          ...user,
+          emailVerified: user.emailVerifiedAt != null,
+          hasPassword: user.password != null,
+        };
+      });
+    });
   }
 }

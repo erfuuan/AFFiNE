@@ -154,7 +154,7 @@ test('should return valid sessionToken if request headers valid', async t => {
           host: 'example.org',
         },
         cookies: {
-          'next-auth.session-token': '123456',
+          sid: '123456',
         },
       } as any,
     },

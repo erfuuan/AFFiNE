@@ -1,42 +1,82 @@
-import { type User } from '@affine/component/auth-components';
-import type { DefaultSession, Session } from 'next-auth';
-// eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { getSession, useSession } from 'next-auth/react';
-import { useEffect, useMemo, useReducer } from 'react';
+import { DebugLogger } from '@affine/debug';
+import { getBaseUrl } from '@affine/graphql';
+import { useCallback, useMemo, useReducer } from 'react';
+import useSWR from 'swr';
 
 import { SessionFetchErrorRightAfterLoginOrSignUp } from '../../unexpected-application-state/errors';
 
-export type CheckedUser = User & {
+const logger = new DebugLogger('auth');
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
   hasPassword: boolean;
-  update: ReturnType<typeof useSession>['update'];
+  avatarUrl: string | null;
+  emailVerified: string | null;
+}
+
+interface Session {
+  user?: User | null;
+  status: 'authenticated' | 'unauthenticated' | 'loading';
+  reload: () => Promise<void>;
+}
+
+export type CheckedUser = Session['user'] & {
+  update: (changes?: Partial<User>) => void;
 };
 
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      name: string;
-      email: string;
-      id: string;
-      hasPassword: boolean;
-    } & Omit<NonNullable<DefaultSession['user']>, 'name' | 'email'>;
+export async function getSession(
+  url: string = getBaseUrl() + '/api/auth/session'
+) {
+  try {
+    const res = await fetch(url);
+
+    if (res.ok) {
+      return (await res.json()) as { user?: User | null };
+    }
+
+    logger.error('Failed to fetch session', res.statusText);
+    return { user: null };
+  } catch (e) {
+    logger.error('Failed to fetch session', e);
+    return { user: null };
   }
+}
+
+export function useSession(): Session {
+  const { data, mutate, isLoading } = useSWR('session', () => getSession());
+
+  return {
+    user: data?.user,
+    status: isLoading
+      ? 'loading'
+      : data?.user
+        ? 'authenticated'
+        : 'unauthenticated',
+    reload: () => {
+      return mutate().then(e => {
+        console.error(e);
+      });
+    },
+  };
 }
 
 type UpdateSessionAction =
   | {
       type: 'update';
-      payload: Session;
+      payload?: Partial<User>;
     }
   | {
       type: 'fetchError';
       payload: null;
     };
 
-function updateSessionReducer(prevState: Session, action: UpdateSessionAction) {
+function updateSessionReducer(prevState: User, action: UpdateSessionAction) {
   const { type, payload } = action;
   switch (type) {
     case 'update':
-      return payload;
+      return { ...prevState, ...payload };
     case 'fetchError':
       return prevState;
   }
@@ -49,11 +89,11 @@ function updateSessionReducer(prevState: Session, action: UpdateSessionAction) {
  * If network error or API response error, it will use the cached value.
  */
 export function useCurrentUser(): CheckedUser {
-  const { data, update } = useSession();
+  const session = useSession();
 
-  const [session, dispatcher] = useReducer(
+  const [user, dispatcher] = useReducer(
     updateSessionReducer,
-    data,
+    session.user,
     firstSession => {
       if (!firstSession) {
         // barely possible.
@@ -64,10 +104,10 @@ export function useCurrentUser(): CheckedUser {
           () => {
             getSession()
               .then(session => {
-                if (session) {
+                if (session.user) {
                   dispatcher({
                     type: 'update',
-                    payload: session,
+                    payload: session.user,
                   });
                 }
               })
@@ -77,35 +117,28 @@ export function useCurrentUser(): CheckedUser {
           }
         );
       }
+
       return firstSession;
     }
   );
 
-  useEffect(() => {
-    if (data) {
+  const update = useCallback(
+    (changes?: Partial<User>) => {
       dispatcher({
         type: 'update',
-        payload: data,
+        payload: changes,
       });
-    } else {
-      dispatcher({
-        type: 'fetchError',
-        payload: null,
-      });
-    }
-  }, [data, update]);
+    },
+    [dispatcher]
+  );
 
-  const user = session.user;
-
-  return useMemo(() => {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      image: user.image,
-      hasPassword: user?.hasPassword ?? false,
+  return useMemo(
+    () => ({
+      ...user,
       update,
-    };
-    // spread the user object to make sure the hook will not be re-rendered when user ref changed but the properties not.
-  }, [user.id, user.name, user.email, user.image, user.hasPassword, update]);
+    }),
+    // only list the things will change as deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user.id, user.avatarUrl, user.name, update]
+  );
 }

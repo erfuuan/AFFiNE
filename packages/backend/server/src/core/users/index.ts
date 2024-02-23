@@ -6,7 +6,7 @@ import { StorageModule } from '../storage';
 import { UserAvatarController } from './controller';
 import { UserManagementResolver } from './management';
 import { UserResolver } from './resolver';
-import { UsersService } from './users';
+import { UsersService } from './service';
 
 @Module({
   imports: [StorageModule, FeatureModule, QuotaModule],
@@ -16,5 +16,5 @@ import { UsersService } from './users';
 })
 export class UsersModule {}
 
+export { UsersService } from './service';
 export { UserType } from './types';
-export { UsersService } from './users';

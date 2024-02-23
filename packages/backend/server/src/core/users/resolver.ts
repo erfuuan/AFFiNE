@@ -17,10 +17,12 @@ import {
   PaymentRequiredException,
   Throttle,
 } from '../../fundamentals';
-import { Auth, CurrentUser, Public, Publicable } from '../auth/guard';
+import { CurrentUser } from '../auth/current-user';
+import { Public } from '../auth/guard';
 import { FeatureManagementService } from '../features';
 import { QuotaService } from '../quota';
 import { AvatarStorage } from '../storage';
+import { UsersService } from './service';
 import {
   DeleteAccount,
   RemoveAvatar,
@@ -28,14 +30,12 @@ import {
   UserQuotaType,
   UserType,
 } from './types';
-import { UsersService } from './users';
 
 /**
  * User resolver
  * All op rate limit: 10 req/m
  */
 @UseGuards(CloudThrottlerGuard)
-@Auth()
 @Resolver(() => UserType)
 export class UserResolver {
   constructor(
@@ -53,30 +53,14 @@ export class UserResolver {
       ttl: 60,
     },
   })
-  @Publicable()
+  @Public()
   @Query(() => UserType, {
     name: 'currentUser',
     description: 'Get current user',
     nullable: true,
   })
-  async currentUser(@CurrentUser() user?: UserType) {
-    if (!user) {
-      return null;
-    }
-
-    const storedUser = await this.users.findUserById(user.id);
-    if (!storedUser) {
-      throw new BadRequestException(`User ${user.id} not found in db`);
-    }
-    return {
-      id: storedUser.id,
-      name: storedUser.name,
-      email: storedUser.email,
-      emailVerified: storedUser.emailVerified,
-      avatarUrl: storedUser.avatarUrl,
-      createdAt: storedUser.createdAt,
-      hasPassword: !!storedUser.password,
-    };
+  currentUser(@CurrentUser() user?: CurrentUser): UserType | undefined {
+    return user;
   }
 
   @Throttle({
@@ -110,8 +94,8 @@ export class UserResolver {
 
     // only return limited info when not logged in
     return {
-      email: user?.email,
-      hasPassword: !!user?.password,
+      email: user.email,
+      hasPassword: !!user.password,
     };
   }
 
@@ -128,7 +112,7 @@ export class UserResolver {
     name: 'invoiceCount',
     description: 'Get user invoice count',
   })
-  async invoiceCount(@CurrentUser() user: UserType) {
+  async invoiceCount(@CurrentUser() user: CurrentUser) {
     return this.prisma.userInvoice.count({
       where: { userId: user.id },
     });
@@ -145,7 +129,7 @@ export class UserResolver {
     description: 'Upload user avatar',
   })
   async uploadAvatar(
-    @CurrentUser() user: UserType,
+    @CurrentUser() user: CurrentUser,
     @Args({ name: 'avatar', type: () => GraphQLUpload })
     avatar: FileUpload
   ) {
@@ -179,7 +163,7 @@ export class UserResolver {
     name: 'removeAvatar',
     description: 'Remove user avatar',
   })
-  async removeAvatar(@CurrentUser() user: UserType) {
+  async removeAvatar(@CurrentUser() user: CurrentUser) {
     if (!user) {
       throw new BadRequestException(`User not found`);
     }
@@ -197,7 +181,9 @@ export class UserResolver {
     },
   })
   @Mutation(() => DeleteAccount)
-  async deleteAccount(@CurrentUser() user: UserType): Promise<DeleteAccount> {
+  async deleteAccount(
+    @CurrentUser() user: CurrentUser
+  ): Promise<DeleteAccount> {
     const deletedUser = await this.users.deleteUser(user.id);
     this.event.emit('user.deleted', deletedUser);
     return { success: true };

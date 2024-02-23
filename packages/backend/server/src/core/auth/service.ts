@@ -1,13 +1,11 @@
-import { randomUUID } from 'node:crypto';
-
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  OnApplicationBootstrap,
   UnauthorizedException,
 } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
-import { Algorithm, sign, verify as jwtVerify } from '@node-rs/jsonwebtoken';
 import { PrismaClient, type User } from '@prisma/client';
 import { nanoid } from 'nanoid';
 
@@ -16,103 +14,31 @@ import {
   MailService,
   verifyChallengeResponse,
 } from '../../fundamentals';
-import { Quota_FreePlanV1_1 } from '../quota';
-
-export type UserClaim = Pick<
-  User,
-  'id' | 'name' | 'email' | 'emailVerified' | 'createdAt' | 'avatarUrl'
-> & {
-  hasPassword?: boolean;
-};
-
-export const getUtcTimestamp = () => Math.floor(Date.now() / 1000);
+import { FeatureManagementService } from '../features/management';
+import { UsersService } from '../users/service';
+import type { CurrentUser } from './current-user';
+import { sessionUser } from './session';
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnApplicationBootstrap {
   constructor(
     private readonly config: Config,
     private readonly prisma: PrismaClient,
-    private readonly mailer: MailService
+    private readonly mailer: MailService,
+    private readonly feature: FeatureManagementService,
+    private readonly user: UsersService
   ) {}
 
-  sign(user: UserClaim) {
-    const now = getUtcTimestamp();
-    return sign(
-      {
-        data: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified?.toISOString(),
-          image: user.avatarUrl,
-          hasPassword: Boolean(user.hasPassword),
-          createdAt: user.createdAt.toISOString(),
-        },
-        iat: now,
-        exp: now + this.config.auth.accessTokenExpiresIn,
-        iss: this.config.serverId,
-        sub: user.id,
-        aud: 'https://affine.pro',
-        jti: randomUUID({
-          disableEntropyCache: true,
-        }),
-      },
-      this.config.auth.privateKey,
-      {
-        algorithm: Algorithm.ES256,
-      }
-    );
-  }
-
-  refresh(user: UserClaim) {
-    const now = getUtcTimestamp();
-    return sign(
-      {
-        data: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified?.toISOString(),
-          image: user.avatarUrl,
-          hasPassword: Boolean(user.hasPassword),
-          createdAt: user.createdAt.toISOString(),
-        },
-        exp: now + this.config.auth.refreshTokenExpiresIn,
-        iat: now,
-        iss: this.config.serverId,
-        sub: user.id,
-        aud: 'https://affine.pro',
-        jti: randomUUID({
-          disableEntropyCache: true,
-        }),
-      },
-      this.config.auth.privateKey,
-      {
-        algorithm: Algorithm.ES256,
-      }
-    );
-  }
-
-  async verify(token: string) {
-    try {
-      const data = (
-        await jwtVerify(token, this.config.auth.publicKey, {
-          algorithms: [Algorithm.ES256],
-          iss: [this.config.serverId],
-          leeway: this.config.auth.leeway,
-          requiredSpecClaims: ['exp', 'iat', 'iss', 'sub'],
-          aud: ['https://affine.pro'],
-        })
-      ).data as UserClaim;
-
-      return {
-        ...data,
-        emailVerified: data.emailVerified ? new Date(data.emailVerified) : null,
-        createdAt: new Date(data.createdAt),
-      };
-    } catch (e) {
-      throw new UnauthorizedException('Invalid token');
+  async onApplicationBootstrap() {
+    if (this.config.node.dev) {
+      await this.signUp('Dev User', 'dev@affine.pro', 'dev').catch(() => {
+        // ignore
+      });
     }
+  }
+
+  canSignIn(email: string) {
+    return this.feature.canEarlyAccess(email);
   }
 
   async verifyCaptchaToken(token: any, ip: string) {
@@ -147,15 +73,8 @@ export class AuthService {
     );
   }
 
-  async signIn(email: string, password: string): Promise<User> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
+  async signIn(email: string, password: string): Promise<CurrentUser> {
+    const user = await this.getUserByEmail(email);
 
     if (!user) {
       throw new BadRequestException('Invalid email');
@@ -175,117 +94,47 @@ export class AuthService {
       throw new UnauthorizedException('Invalid password');
     }
 
-    return user;
+    return sessionUser(user);
   }
 
-  async signUp(name: string, email: string, password: string): Promise<User> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
+  async signUp(
+    name: string,
+    email: string,
+    password: string
+  ): Promise<CurrentUser> {
+    const user = await this.getUserByEmail(email);
 
     if (user) {
-      throw new BadRequestException('Email already exists');
+      throw new BadRequestException('Email was taken');
     }
 
     const hashedPassword = await hash(password);
 
-    return this.prisma.user.create({
-      data: {
+    return this.user
+      .createUser({
         name,
         email,
         password: hashedPassword,
-        // TODO(@forehalo): handle in event system
-        features: {
-          create: {
-            reason: 'created by api sign up',
-            activated: true,
-            feature: {
-              connect: {
-                feature_version: Quota_FreePlanV1_1,
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
-  async createAnonymousUser(email: string): Promise<User> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
-
-    if (user) {
-      throw new BadRequestException('Email already exists');
-    }
-
-    return this.prisma.user.create({
-      data: {
-        name: 'Unnamed',
-        email,
-        features: {
-          create: {
-            reason: 'created by invite sign up',
-            activated: true,
-            feature: {
-              connect: {
-                feature_version: Quota_FreePlanV1_1,
-              },
-            },
-          },
-        },
-      },
-    });
+      })
+      .then(sessionUser);
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
+    return this.user.findUserByEmail(email);
   }
 
-  async isUserHasPassword(email: string): Promise<boolean> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
+  async doesUserHavePassword(email: string): Promise<boolean> {
+    const user = await this.getUserByEmail(email);
+
     if (!user) {
       throw new BadRequestException('Invalid email');
     }
+
     return Boolean(user.password);
   }
 
   async changePassword(email: string, newPassword: string): Promise<User> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-        emailVerified: {
-          not: null,
-        },
-      },
-    });
+    const user = await this.getUserByEmail(email);
 
     if (!user) {
       throw new BadRequestException('Invalid email');
@@ -320,6 +169,21 @@ export class AuthService {
       },
       data: {
         email: newEmail,
+        emailVerifiedAt: new Date(),
+      },
+    });
+  }
+
+  async setEmailVerified(id: string) {
+    return await this.prisma.user.update({
+      where: {
+        id,
+      },
+      data: {
+        emailVerifiedAt: new Date(),
+      },
+      select: {
+        emailVerifiedAt: true,
       },
     });
   }
@@ -336,7 +200,20 @@ export class AuthService {
   async sendVerifyChangeEmail(email: string, callbackUrl: string) {
     return this.mailer.sendVerifyChangeEmail(email, callbackUrl);
   }
+  async sendVerifyEmail(email: string, callbackUrl: string) {
+    return this.mailer.sendVerifyEmail(email, callbackUrl);
+  }
   async sendNotificationChangeEmail(email: string) {
     return this.mailer.sendNotificationChangeEmail(email);
+  }
+
+  async sendSignInEmail(email: string, link: string, signUp: boolean) {
+    return signUp
+      ? await this.mailer.sendSignUpMail(link.toString(), {
+          to: email,
+        })
+      : await this.mailer.sendSignInMail(link.toString(), {
+          to: email,
+        });
   }
 }

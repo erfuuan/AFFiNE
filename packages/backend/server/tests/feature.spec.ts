@@ -54,11 +54,6 @@ test.beforeEach(async t => {
   const { app } = await createTestingApp({
     imports: [
       ConfigModule.forRoot({
-        auth: {
-          accessTokenExpiresIn: 1,
-          refreshTokenExpiresIn: 1,
-          leeway: 1,
-        },
         host: 'example.org',
         https: true,
         featureFlags: {

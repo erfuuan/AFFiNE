@@ -21,7 +21,7 @@ export class SelfHostAdmin1605053000403 {
         data: {
           name: 'AFFINE First User',
           email: process.env.AFFINE_ADMIN_EMAIL,
-          emailVerified: new Date(),
+          emailVerifiedAt: new Date(),
           password: await hash(process.env.AFFINE_ADMIN_PASSWORD),
         },
       });

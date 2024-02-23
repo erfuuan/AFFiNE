@@ -67,9 +67,6 @@ type InviteUserType {
   """User avatar url"""
   avatarUrl: String
 
-  """User created date"""
-  createdAt: DateTime
-
   """User email"""
   email: String
 
@@ -103,7 +100,7 @@ type LimitedUserType {
   email: String!
 
   """User password has been set"""
-  hasPassword: Boolean
+  hasPassword: Boolean!
 }
 
 type Mutation {
@@ -111,7 +108,7 @@ type Mutation {
   addToEarlyAccess(email: String!): Int!
   addWorkspaceFeature(feature: FeatureType!, workspaceId: String!): Int!
   cancelSubscription(idempotencyKey: String!): UserSubscription!
-  changeEmail(token: String!): UserType!
+  changeEmail(email: String!, token: String!): UserType!
   changePassword(newPassword: String!, token: String!): UserType!
 
   """Create a subscription checkout link of stripe"""
@@ -141,10 +138,11 @@ type Mutation {
   revoke(userId: String!, workspaceId: String!): Boolean!
   revokePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "use revokePublicPage")
   revokePublicPage(pageId: String!, workspaceId: String!): WorkspacePage!
-  sendChangeEmail(callbackUrl: String!, email: String!): Boolean!
-  sendChangePasswordEmail(callbackUrl: String!, email: String!): Boolean!
-  sendSetPasswordEmail(callbackUrl: String!, email: String!): Boolean!
+  sendChangeEmail(callbackUrl: String!, email: String): Boolean!
+  sendChangePasswordEmail(callbackUrl: String!, email: String): Boolean!
+  sendSetPasswordEmail(callbackUrl: String!, email: String): Boolean!
   sendVerifyChangeEmail(callbackUrl: String!, email: String!, token: String!): Boolean!
+  sendVerifyEmail(callbackUrl: String!): Boolean!
   setBlob(blob: Upload!, workspaceId: String!): String!
   setWorkspaceExperimentalFeature(enable: Boolean!, feature: FeatureType!, workspaceId: String!): Boolean!
   sharePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "renamed to publicPage")
@@ -157,6 +155,12 @@ type Mutation {
 
   """Upload user avatar"""
   uploadAvatar(avatar: Upload!): UserType!
+  verifyEmail(token: String!): Boolean!
+}
+
+enum OAuthProviderType {
+  GitHub
+  Google
 }
 
 """User permission in workspace"""
@@ -239,6 +243,7 @@ type ServerConfigType {
 
   """server identical name could be shown as badge on user interface"""
   name: String!
+  oauthProviders: [OAuthProviderType!]!
 
   """server type"""
   type: ServerDeploymentType!
@@ -253,6 +258,7 @@ enum ServerDeploymentType {
 }
 
 enum ServerFeature {
+  OAuth
   Payment
 }
 
@@ -286,12 +292,6 @@ enum SubscriptionStatus {
   Paused
   Trialing
   Unpaid
-}
-
-type TokenType {
-  refresh: String!
-  sessionToken: String
-  token: String!
 }
 
 input UpdateWorkspaceInput {
@@ -356,17 +356,14 @@ type UserType {
   """User avatar url"""
   avatarUrl: String
 
-  """User created date"""
-  createdAt: DateTime
-
   """User email"""
   email: String!
 
   """User email verified"""
-  emailVerified: DateTime
+  emailVerified: DateTime!
 
   """User password has been set"""
-  hasPassword: Boolean
+  hasPassword: Boolean!
   id: ID!
 
   """Get user invoice count"""
@@ -377,7 +374,7 @@ type UserType {
   name: String!
   quota: UserQuota
   subscription: UserSubscription
-  token: TokenType!
+  token: tokenType! @deprecated(reason: "use [/api/auth/authorize]")
 }
 
 type WorkspaceBlobSizes {
@@ -432,4 +429,10 @@ type WorkspaceType {
 
   """Shared pages of workspace"""
   sharedPages: [String!]! @deprecated(reason: "use WorkspaceType.publicPages")
+}
+
+type tokenType {
+  refresh: String!
+  sessionToken: String
+  token: String!
 }
