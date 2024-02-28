@@ -583,7 +583,7 @@ __metadata:
     nanoid: "npm:^5.0.6"
     nx: "npm:^18.0.4"
     nyc: "npm:^15.1.0"
-    oxlint: "npm:0.0.22"
+    oxlint: "npm:0.2.12"
     prettier: "npm:^3.2.5"
     semver: "npm:^7.6.0"
     serve: "npm:^14.2.1"
@@ -9417,44 +9417,58 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oxlint/darwin-arm64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/darwin-arm64@npm:0.0.22"
+"@oxlint/darwin-arm64@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/darwin-arm64@npm:0.2.12"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@oxlint/darwin-x64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/darwin-x64@npm:0.0.22"
+"@oxlint/darwin-x64@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/darwin-x64@npm:0.2.12"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@oxlint/linux-arm64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/linux-arm64@npm:0.0.22"
-  conditions: os=linux & cpu=arm64
+"@oxlint/linux-arm64-gnu@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/linux-arm64-gnu@npm:0.2.12"
+  conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@oxlint/linux-x64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/linux-x64@npm:0.0.22"
-  conditions: os=linux & cpu=x64
+"@oxlint/linux-arm64-musl@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/linux-arm64-musl@npm:0.2.12"
+  conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@oxlint/win32-arm64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/win32-arm64@npm:0.0.22"
+"@oxlint/linux-x64-gnu@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/linux-x64-gnu@npm:0.2.12"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxlint/linux-x64-musl@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/linux-x64-musl@npm:0.2.12"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxlint/win32-arm64@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/win32-arm64@npm:0.2.12"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@oxlint/win32-x64@npm:0.0.22":
-  version: 0.0.22
-  resolution: "@oxlint/win32-x64@npm:0.0.22"
+"@oxlint/win32-x64@npm:0.2.12":
+  version: 0.2.12
+  resolution: "@oxlint/win32-x64@npm:0.2.12"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -28781,24 +28795,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"oxlint@npm:0.0.22":
-  version: 0.0.22
-  resolution: "oxlint@npm:0.0.22"
+"oxlint@npm:0.2.12":
+  version: 0.2.12
+  resolution: "oxlint@npm:0.2.12"
   dependencies:
-    "@oxlint/darwin-arm64": "npm:0.0.22"
-    "@oxlint/darwin-x64": "npm:0.0.22"
-    "@oxlint/linux-arm64": "npm:0.0.22"
-    "@oxlint/linux-x64": "npm:0.0.22"
-    "@oxlint/win32-arm64": "npm:0.0.22"
-    "@oxlint/win32-x64": "npm:0.0.22"
+    "@oxlint/darwin-arm64": "npm:0.2.12"
+    "@oxlint/darwin-x64": "npm:0.2.12"
+    "@oxlint/linux-arm64-gnu": "npm:0.2.12"
+    "@oxlint/linux-arm64-musl": "npm:0.2.12"
+    "@oxlint/linux-x64-gnu": "npm:0.2.12"
+    "@oxlint/linux-x64-musl": "npm:0.2.12"
+    "@oxlint/win32-arm64": "npm:0.2.12"
+    "@oxlint/win32-x64": "npm:0.2.12"
   dependenciesMeta:
     "@oxlint/darwin-arm64":
       optional: true
     "@oxlint/darwin-x64":
       optional: true
-    "@oxlint/linux-arm64":
+    "@oxlint/linux-arm64-gnu":
       optional: true
-    "@oxlint/linux-x64":
+    "@oxlint/linux-arm64-musl":
+      optional: true
+    "@oxlint/linux-x64-gnu":
+      optional: true
+    "@oxlint/linux-x64-musl":
       optional: true
     "@oxlint/win32-arm64":
       optional: true
@@ -28806,7 +28826,7 @@ __metadata:
       optional: true
   bin:
     oxlint: bin/oxlint
-  checksum: 10/9d780f3293b08c83e45996187c8098e2ef8323ed02427c7a15d5cfa542f967b0e7862f76814ef3b8c4b94badd2f21eb92130de7f2f8f0dfec91e4a3a3797c63f
+  checksum: 10/8536827f70ea1560537b3715fdfa8b297fcc0974a995533af5398562eb491dadd7d9e0b6dcfc660aba5db55ba74f2a1b666810908cec42f8f858787e4350ed17
   languageName: node
   linkType: hard
 
