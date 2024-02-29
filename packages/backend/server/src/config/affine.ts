@@ -80,21 +80,29 @@ AFFiNE.port = 3010;
 // ###############################################################
 // ##                        Plugins settings                   ##
 // ###############################################################
-//
-// /* Redis Plugin */
-// /* Provide caching and session storing backed by Redis. */
-// /* Useful when you deploy AFFiNE server in a cluster. */
+
+/* Redis Plugin */
+/* Provide caching and session storing backed by Redis. */
+/* Useful when you deploy AFFiNE server in a cluster. */
 AFFiNE.plugins.use('redis', {
   /* override options */
 });
-//
-//
-// /* Payment Plugin */
+
+/* Payment Plugin Default Config */
 AFFiNE.plugins.use('payment', {
   stripe: { keys: {}, apiVersion: '2023-10-16' },
 });
-//
-//
+
+/* Captcha Plugin Default Config */
+AFFiNE.plugins.use('captcha', {
+  turnstile: {
+    secret: '1x0000000000000000000000000000000AA',
+  },
+  challenge: {
+    bits: 20,
+  },
+});
+
 // /* Cloudflare R2 Plugin */
 // /* Enable if you choose to store workspace blobs or user avatars in Cloudflare R2 Storage Service */
 // AFFiNE.plugins.use('cloudflare-r2', {
