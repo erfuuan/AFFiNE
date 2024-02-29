@@ -31,10 +31,4 @@ export class AuthSessionController {
       users: await this.session.users(token),
     };
   }
-
-  @Public()
-  @Get('/challenge')
-  async challenge() {
-    return this.session.createChallengeToken();
-  }
 }

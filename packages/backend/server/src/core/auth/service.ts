@@ -7,13 +7,8 @@ import {
 } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
 import { PrismaClient, type User } from '@prisma/client';
-import { nanoid } from 'nanoid';
 
-import {
-  Config,
-  MailService,
-  verifyChallengeResponse,
-} from '../../fundamentals';
+import { Config, MailService } from '../../fundamentals';
 import { FeatureManagementService } from '../features/management';
 import { UsersService } from '../users/service';
 import type { CurrentUser } from './current-user';
@@ -39,38 +34,6 @@ export class AuthService implements OnApplicationBootstrap {
 
   canSignIn(email: string) {
     return this.feature.canEarlyAccess(email);
-  }
-
-  async verifyCaptchaToken(token: any, ip: string) {
-    if (typeof token !== 'string' || !token) return false;
-
-    const formData = new FormData();
-    formData.append('secret', this.config.auth.captcha.turnstile.secret);
-    formData.append('response', token);
-    formData.append('remoteip', ip);
-    // prevent replay attack
-    formData.append('idempotency_key', nanoid());
-
-    const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-    const result = await fetch(url, {
-      body: formData,
-      method: 'POST',
-    });
-    const outcome = await result.json();
-
-    return (
-      !!outcome.success &&
-      // skip hostname check in dev mode
-      (this.config.node.dev || outcome.hostname === this.config.host)
-    );
-  }
-
-  async verifyChallengeResponse(response: any, resource: string) {
-    return verifyChallengeResponse(
-      response,
-      this.config.auth.captcha.challenge.bits,
-      resource
-    );
   }
 
   async signIn(email: string, password: string): Promise<CurrentUser> {

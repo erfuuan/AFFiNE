@@ -134,12 +134,6 @@ export class AuthController {
   }
 
   @Public()
-  @Get('/challenge')
-  async challenge() {
-    return this.session.createChallengeToken();
-  }
-
-  @Public()
   @Get('/magic-link')
   async magicLinkSignIn(
     @Req() req: Request,

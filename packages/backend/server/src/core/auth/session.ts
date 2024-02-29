@@ -10,7 +10,7 @@ import { PrismaClient, Session, User } from '@prisma/client';
 import { CookieOptions, Request, Response } from 'express';
 import { assign, omit } from 'lodash-es';
 
-import { Config, SessionCache } from '../../fundamentals';
+import { Config } from '../../fundamentals';
 import { UsersService } from '../users/service';
 import type { CurrentUser } from './current-user';
 
@@ -52,7 +52,6 @@ export class SessionService {
 
   constructor(
     private readonly db: PrismaClient,
-    private readonly cache: SessionCache,
     private readonly config: Config,
     private readonly user: UsersService
   ) {}
@@ -278,19 +277,6 @@ export class SessionService {
     });
 
     return session.user;
-  }
-
-  async createChallengeToken() {
-    const challenge = randomUUID();
-    const resource = randomUUID();
-    await this.cache.set(`CHALLENGE:${challenge}`, resource, {
-      ttl: 5 * 60 * 1000,
-    });
-
-    return {
-      challenge,
-      resource,
-    };
   }
 
   async setCookie(req: Request, res: Response, user: { id: string }) {
