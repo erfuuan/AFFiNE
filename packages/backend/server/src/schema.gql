@@ -2,6 +2,14 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input CreateCheckoutSessionInput {
+  coupon: String
+  idempotencyKey: String!
+  plan: SubscriptionPlan = Pro
+  recurring: SubscriptionRecurring = Yearly
+  successCallbackLink: String
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -59,11 +67,14 @@ type InviteUserType {
   """User avatar url"""
   avatarUrl: String
 
+  """User email verified"""
+  createdAt: DateTime @deprecated(reason: "useless")
+
   """User email"""
   email: String
 
   """User email verified"""
-  emailVerified: DateTime
+  emailVerified: Boolean
 
   """User password has been set"""
   hasPassword: Boolean
@@ -79,6 +90,14 @@ type InviteUserType {
   permission: Permission!
 }
 
+enum InvoiceStatus {
+  Draft
+  Open
+  Paid
+  Uncollectible
+  Void
+}
+
 type LimitedUserType {
   """User email"""
   email: String!
@@ -91,8 +110,18 @@ type Mutation {
   acceptInviteById(inviteId: String!, sendAcceptMail: Boolean, workspaceId: String!): Boolean!
   addToEarlyAccess(email: String!): Int!
   addWorkspaceFeature(feature: FeatureType!, workspaceId: String!): Int!
+  cancelSubscription(idempotencyKey: String!): UserSubscription!
   changeEmail(email: String!, token: String!): UserType!
   changePassword(newPassword: String!, token: String!): UserType!
+
+  """Create a subscription checkout link of stripe"""
+  checkout(idempotencyKey: String!, recurring: SubscriptionRecurring!): String! @deprecated(reason: "use `createCheckoutSession` instead")
+
+  """Create a subscription checkout link of stripe"""
+  createCheckoutSession(input: CreateCheckoutSessionInput!): String!
+
+  """Create a stripe customer portal to manage payment methods"""
+  createCustomerPortal: String!
 
   """Create a new workspace"""
   createWorkspace(init: Upload): WorkspaceType!
@@ -108,6 +137,7 @@ type Mutation {
   removeAvatar: RemoveAvatar!
   removeEarlyAccess(email: String!): Int!
   removeWorkspaceFeature(feature: FeatureType!, workspaceId: String!): Int!
+  resumeSubscription(idempotencyKey: String!): UserSubscription!
   revoke(userId: String!, workspaceId: String!): Boolean!
   revokePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "use revokePublicPage")
   revokePublicPage(pageId: String!, workspaceId: String!): WorkspacePage!
@@ -121,6 +151,7 @@ type Mutation {
   sharePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "renamed to publicPage")
   signIn(email: String!, password: String!): UserType!
   signUp(email: String!, name: String!, password: String!): UserType!
+  updateSubscriptionRecurring(idempotencyKey: String!, recurring: SubscriptionRecurring!): UserSubscription!
 
   """Update workspace"""
   updateWorkspace(input: UpdateWorkspaceInput!): WorkspaceType!
@@ -128,6 +159,11 @@ type Mutation {
   """Upload user avatar"""
   uploadAvatar(avatar: Upload!): UserType!
   verifyEmail(token: String!): Boolean!
+}
+
+enum OAuthProviderType {
+  GitHub
+  Google
 }
 
 """User permission in workspace"""
@@ -161,6 +197,7 @@ type Query {
   """List blobs of workspace"""
   listBlobs(workspaceId: String!): [String!]! @deprecated(reason: "use `workspace.blobs` instead")
   listWorkspaceFeatures(feature: FeatureType!): [WorkspaceType!]!
+  prices: [SubscriptionPrice!]!
 
   """Get public workspace by id"""
   publicWorkspace(id: String!): WorkspaceType!
@@ -209,6 +246,7 @@ type ServerConfigType {
 
   """server identical name could be shown as badge on user interface"""
   name: String!
+  oauthProviders: [OAuthProviderType!]!
 
   """server type"""
   type: ServerDeploymentType!
@@ -227,6 +265,38 @@ enum ServerFeature {
   Payment
 }
 
+enum SubscriptionPlan {
+  Enterprise
+  Free
+  Pro
+  SelfHosted
+  Team
+}
+
+type SubscriptionPrice {
+  amount: Int!
+  currency: String!
+  plan: SubscriptionPlan!
+  type: String!
+  yearlyAmount: Int!
+}
+
+enum SubscriptionRecurring {
+  Monthly
+  Yearly
+}
+
+enum SubscriptionStatus {
+  Active
+  Canceled
+  Incomplete
+  IncompleteExpired
+  PastDue
+  Paused
+  Trialing
+  Unpaid
+}
+
 input UpdateWorkspaceInput {
   id: ID!
 
@@ -236,6 +306,20 @@ input UpdateWorkspaceInput {
 
 """The `Upload` scalar type represents a file upload."""
 scalar Upload
+
+type UserInvoice {
+  amount: Int!
+  createdAt: DateTime!
+  currency: String!
+  id: String!
+  lastPaymentError: String
+  link: String
+  plan: SubscriptionPlan!
+  reason: String!
+  recurring: SubscriptionRecurring!
+  status: InvoiceStatus!
+  updatedAt: DateTime!
+}
 
 union UserOrLimitedUser = LimitedUserType | UserType
 
@@ -256,15 +340,33 @@ type UserQuotaHumanReadable {
   storageQuota: String!
 }
 
+type UserSubscription {
+  canceledAt: DateTime
+  createdAt: DateTime!
+  end: DateTime!
+  id: String!
+  nextBillAt: DateTime
+  plan: SubscriptionPlan!
+  recurring: SubscriptionRecurring!
+  start: DateTime!
+  status: SubscriptionStatus!
+  trialEnd: DateTime
+  trialStart: DateTime
+  updatedAt: DateTime!
+}
+
 type UserType {
   """User avatar url"""
   avatarUrl: String
+
+  """User email verified"""
+  createdAt: DateTime @deprecated(reason: "useless")
 
   """User email"""
   email: String!
 
   """User email verified"""
-  emailVerified: DateTime!
+  emailVerified: Boolean!
 
   """User password has been set"""
   hasPassword: Boolean!
@@ -272,10 +374,12 @@ type UserType {
 
   """Get user invoice count"""
   invoiceCount: Int!
+  invoices(skip: Int, take: Int = 8): [UserInvoice!]!
 
   """User name"""
   name: String!
   quota: UserQuota
+  subscription: UserSubscription
   token: tokenType! @deprecated(reason: "use [/api/auth/authorize]")
 }
 
