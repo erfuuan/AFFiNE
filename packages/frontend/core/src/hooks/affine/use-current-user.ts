@@ -1,9 +1,10 @@
 import { DebugLogger } from '@affine/debug';
 import { getBaseUrl } from '@affine/graphql';
-import { useCallback, useMemo, useReducer } from 'react';
+import { useMemo, useReducer } from 'react';
 import useSWR from 'swr';
 
 import { SessionFetchErrorRightAfterLoginOrSignUp } from '../../unexpected-application-state/errors';
+import { useAsyncCallback } from '../affine-async-hooks';
 
 const logger = new DebugLogger('auth');
 
@@ -16,7 +17,7 @@ interface User {
   emailVerified: string | null;
 }
 
-interface Session {
+export interface Session {
   user?: User | null;
   status: 'authenticated' | 'unauthenticated' | 'loading';
   reload: () => Promise<void>;
@@ -54,7 +55,7 @@ export function useSession(): Session {
       : data?.user
         ? 'authenticated'
         : 'unauthenticated',
-    reload: () => {
+    reload: async () => {
       return mutate().then(e => {
         console.error(e);
       });
@@ -122,14 +123,16 @@ export function useCurrentUser(): CheckedUser {
     }
   );
 
-  const update = useCallback(
-    (changes?: Partial<User>) => {
+  const update = useAsyncCallback(
+    async (changes?: Partial<User>) => {
       dispatcher({
         type: 'update',
         payload: changes,
       });
+
+      await session.reload();
     },
-    [dispatcher]
+    [dispatcher, session]
   );
 
   return useMemo(

@@ -1,4 +1,10 @@
-import { createUnionType, Field, ID, ObjectType } from '@nestjs/graphql';
+import {
+  createUnionType,
+  Field,
+  ID,
+  InputType,
+  ObjectType,
+} from '@nestjs/graphql';
 import type { User } from '@prisma/client';
 import { SafeIntResolver } from 'graphql-scalars';
 
@@ -106,4 +112,10 @@ export class DeleteAccount {
 export class RemoveAvatar {
   @Field()
   success!: boolean;
+}
+
+@InputType()
+export class UpdateUserInput implements Partial<User> {
+  @Field({ description: 'User name', nullable: true })
+  name?: string;
 }

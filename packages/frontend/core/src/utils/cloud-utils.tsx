@@ -120,7 +120,7 @@ export const signOutCloud = async (redirectUri?: string) => {
           CLOUD_WORKSPACE_CHANGED_BROADCAST_CHANNEL_KEY
         ).postMessage(1);
 
-        if (redirectUri) {
+        if (redirectUri && location.href !== redirectUri) {
           setTimeout(() => {
             location.href = redirectUri;
           }, 0);

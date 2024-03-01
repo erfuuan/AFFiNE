@@ -13,6 +13,7 @@ import {
   allBlobSizesQuery,
   removeAvatarMutation,
   SubscriptionPlan,
+  updateUserProfileMutation,
   uploadAvatarMutation,
 } from '@affine/graphql';
 import { useAFFiNEI18N } from '@affine/i18n/hooks';
@@ -58,10 +59,10 @@ export const UserAvatar = () => {
     async (file: File) => {
       try {
         const reducedFile = await validateAndReduceImage(file);
-        await avatarTrigger({
+        const data = await avatarTrigger({
           avatar: reducedFile, // Pass the reducedFile directly to the avatarTrigger
         });
-        user.update();
+        user.update({ avatarUrl: data.uploadAvatar.avatarUrl });
         pushNotification({
           title: 'Update user avatar success',
           type: 'success',
@@ -81,7 +82,7 @@ export const UserAvatar = () => {
     async (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
       await removeAvatarTrigger();
-      user.update();
+      user.update({ avatarUrl: null });
     },
     [removeAvatarTrigger, user]
   );
@@ -113,14 +114,30 @@ export const AvatarAndName = () => {
   const t = useAFFiNEI18N();
   const user = useCurrentUser();
   const [input, setInput] = useState<string>(user.name);
+  const pushNotification = useSetAtom(pushNotificationAtom);
 
+  const { trigger: updateProfile } = useMutation({
+    mutation: updateUserProfileMutation,
+  });
   const allowUpdate = !!input && input !== user.name;
-  const handleUpdateUserName = useCallback(() => {
+  const handleUpdateUserName = useAsyncCallback(async () => {
     if (!allowUpdate) {
       return;
     }
-    user.update({ name: input });
-  }, [allowUpdate, input, user]);
+
+    try {
+      const data = await updateProfile({
+        input: { name: input },
+      });
+      user.update({ name: data.updateProfile.name });
+    } catch (e) {
+      pushNotification({
+        title: 'Failed to update user name.',
+        message: String(e),
+        type: 'error',
+      });
+    }
+  }, [allowUpdate, input, user, updateProfile, pushNotification]);
 
   return (
     <SettingRow

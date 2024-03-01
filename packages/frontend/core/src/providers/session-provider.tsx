@@ -14,7 +14,7 @@ import {
 
 import { useOnceSignedInEvents } from '../atoms/event';
 
-const SessionDefence = (props: PropsWithChildren) => {
+export const CloudSessionProvider = (props: PropsWithChildren) => {
   const session = useSession();
   const prevSession = useRef<ReturnType<typeof useSession>>();
   const pushNotification = useSetAtom(pushNotificationAtom);
@@ -49,9 +49,6 @@ const SessionDefence = (props: PropsWithChildren) => {
       prevSession.current = session;
     }
   }, [session, prevSession, pushNotification, refreshAfterSignedInEvents, t]);
-  return props.children;
-};
 
-export const CloudSessionProvider = ({ children }: PropsWithChildren) => {
-  return <SessionDefence>{children}</SessionDefence>;
+  return props.children;
 };

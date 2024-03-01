@@ -753,6 +753,20 @@ mutation updateSubscription($recurring: SubscriptionRecurring!, $idempotencyKey:
 }`,
 };
 
+export const updateUserProfileMutation = {
+  id: 'updateUserProfileMutation' as const,
+  operationName: 'updateUserProfile',
+  definitionName: 'updateProfile',
+  containsFile: false,
+  query: `
+mutation updateUserProfile($input: UpdateUserInput!) {
+  updateProfile(input: $input) {
+    id
+    name
+  }
+}`,
+};
+
 export const uploadAvatarMutation = {
   id: 'uploadAvatarMutation' as const,
   operationName: 'uploadAvatar',

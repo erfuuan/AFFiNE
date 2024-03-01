@@ -151,6 +151,7 @@ type Mutation {
   sharePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "renamed to publicPage")
   signIn(email: String!, password: String!): UserType!
   signUp(email: String!, name: String!, password: String!): UserType!
+  updateProfile(input: UpdateUserInput!): UserType!
   updateSubscriptionRecurring(idempotencyKey: String!, recurring: SubscriptionRecurring!): UserSubscription!
 
   """Update workspace"""
@@ -295,6 +296,11 @@ enum SubscriptionStatus {
   Paused
   Trialing
   Unpaid
+}
+
+input UpdateUserInput {
+  """User name"""
+  name: String
 }
 
 input UpdateWorkspaceInput {

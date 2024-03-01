@@ -9,6 +9,7 @@ import {
 } from '@nestjs/graphql';
 import { PrismaClient, type User } from '@prisma/client';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
+import { isNil, omitBy } from 'lodash-es';
 
 import {
   CloudThrottlerGuard,
@@ -19,6 +20,7 @@ import {
 } from '../../fundamentals';
 import { CurrentUser } from '../auth/current-user';
 import { Public } from '../auth/guard';
+import { sessionUser } from '../auth/session';
 import { FeatureManagementService } from '../features';
 import { QuotaService } from '../quota';
 import { AvatarStorage } from '../storage';
@@ -26,6 +28,7 @@ import { UsersService } from './service';
 import {
   DeleteAccount,
   RemoveAvatar,
+  UpdateUserInput,
   UserOrLimitedUser,
   UserQuotaType,
   UserType,
@@ -135,6 +138,33 @@ export class UserResolver {
         avatarUrl: link,
       },
     });
+  }
+
+  @Throttle({
+    default: {
+      limit: 10,
+      ttl: 60,
+    },
+  })
+  @Mutation(() => UserType, {
+    name: 'updateProfile',
+  })
+  async updateUserProfile(
+    @CurrentUser() user: CurrentUser,
+    @Args('input', { type: () => UpdateUserInput }) input: UpdateUserInput
+  ): Promise<UserType> {
+    input = omitBy(input, isNil);
+
+    if (Object.keys(input).length === 0) {
+      return user;
+    }
+
+    return sessionUser(
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: input,
+      })
+    );
   }
 
   @Throttle({

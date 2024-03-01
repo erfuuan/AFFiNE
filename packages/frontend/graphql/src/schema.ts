@@ -110,6 +110,11 @@ export enum SubscriptionStatus {
   Unpaid = 'Unpaid',
 }
 
+export interface UpdateUserInput {
+  /** User name */
+  name: InputMaybe<Scalars['String']['input']>;
+}
+
 export interface UpdateWorkspaceInput {
   id: Scalars['ID']['input'];
   /** is Public workspace */
@@ -265,7 +270,7 @@ export type EarlyAccessUsersQuery = {
     name: string;
     email: string;
     avatarUrl: string | null;
-    emailVerified: string;
+    emailVerified: boolean;
     subscription: {
       __typename?: 'UserSubscription';
       plan: SubscriptionPlan;
@@ -295,7 +300,7 @@ export type GetCurrentUserQuery = {
     id: string;
     name: string;
     email: string;
-    emailVerified: string;
+    emailVerified: boolean;
     avatarUrl: string | null;
     token: { __typename?: 'tokenType'; sessionToken: string | null };
   } | null;
@@ -358,7 +363,7 @@ export type GetMembersByWorkspaceIdQuery = {
       permission: Permission;
       inviteId: string;
       accepted: boolean;
-      emailVerified: string | null;
+      emailVerified: boolean | null;
     }>;
   };
 };
@@ -731,6 +736,15 @@ export type UpdateSubscriptionMutation = {
     recurring: SubscriptionRecurring;
     nextBillAt: string | null;
   };
+};
+
+export type UpdateUserProfileMutationVariables = Exact<{
+  input: UpdateUserInput;
+}>;
+
+export type UpdateUserProfileMutation = {
+  __typename?: 'Mutation';
+  updateProfile: { __typename?: 'UserType'; id: string; name: string };
 };
 
 export type UploadAvatarMutationVariables = Exact<{
@@ -1151,6 +1165,11 @@ export type Mutations =
       name: 'updateSubscriptionMutation';
       variables: UpdateSubscriptionMutationVariables;
       response: UpdateSubscriptionMutation;
+    }
+  | {
+      name: 'updateUserProfileMutation';
+      variables: UpdateUserProfileMutationVariables;
+      response: UpdateUserProfileMutation;
     }
   | {
       name: 'uploadAvatarMutation';
