@@ -53,22 +53,6 @@ export class UserResolver {
       ttl: 60,
     },
   })
-  @Public()
-  @Query(() => UserType, {
-    name: 'currentUser',
-    description: 'Get current user',
-    nullable: true,
-  })
-  currentUser(@CurrentUser() user?: CurrentUser): UserType | undefined {
-    return user;
-  }
-
-  @Throttle({
-    default: {
-      limit: 10,
-      ttl: 60,
-    },
-  })
   @Query(() => UserOrLimitedUser, {
     name: 'user',
     description: 'Get user by email',

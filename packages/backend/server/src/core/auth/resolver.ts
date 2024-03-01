@@ -10,6 +10,7 @@ import {
   Mutation,
   ObjectType,
   Parent,
+  Query,
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
@@ -18,6 +19,7 @@ import type { Request, Response } from 'express';
 import { CloudThrottlerGuard, Config, Throttle } from '../../fundamentals';
 import { UserType } from '../users/types';
 import { CurrentUser } from './current-user';
+import { Public } from './guard';
 import { AuthService } from './service';
 import { SessionService } from './session';
 import { TokenService, TokenType } from './token';
@@ -52,6 +54,22 @@ export class AuthResolver {
 
   @Throttle({
     default: {
+      limit: 10,
+      ttl: 60,
+    },
+  })
+  @Public()
+  @Query(() => UserType, {
+    name: 'currentUser',
+    description: 'Get current user',
+    nullable: true,
+  })
+  currentUser(@CurrentUser() user?: CurrentUser): UserType | undefined {
+    return user;
+  }
+
+  @Throttle({
+    default: {
       limit: 20,
       ttl: 60,
     },
@@ -61,33 +79,27 @@ export class AuthResolver {
     deprecationReason: 'use [/api/auth/authorize]',
   })
   async clientToken(
-    @Context() ctx: { req: Request },
     @CurrentUser() currentUser: UserType,
     @Parent() user: UserType
-  ) {
+  ): Promise<ClientTokenType> {
     if (user.id !== currentUser.id) {
-      throw new BadRequestException('Invalid user');
+      throw new ForbiddenException('Invalid user');
     }
 
-    let sessionToken: string | undefined;
-
-    // only return session if the request is from the same origin & path == /open-app
-    if (
-      ctx.req.headers.referer &&
-      ctx.req.headers.host &&
-      new URL(ctx.req.headers.referer).pathname.startsWith('/open-app') &&
-      ctx.req.headers.host === new URL(this.config.origin).host
-    ) {
-      sessionToken = ctx.req.cookies['sid'];
-    }
+    const session = await this.session.createSession(
+      user,
+      undefined,
+      this.config.auth.accessToken.ttl
+    );
 
     return {
-      sessionToken,
-      token: '',
+      sessionToken: session.sessionId,
+      token: session.sessionId,
       refresh: '',
     };
   }
 
+  @Public()
   @Throttle({
     default: {
       limit: 10,
@@ -103,9 +115,11 @@ export class AuthResolver {
   ) {
     const user = await this.auth.signUp(name, email, password);
     await this.session.setCookie(ctx.req, ctx.res, user);
+    ctx.req.user = user;
     return user;
   }
 
+  @Public()
   @Throttle({
     default: {
       limit: 10,
@@ -120,6 +134,7 @@ export class AuthResolver {
   ) {
     const user = await this.auth.signIn(email, password);
     await this.session.setCookie(ctx.req, ctx.res, user);
+    ctx.req.user = user;
     return user;
   }
 

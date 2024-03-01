@@ -94,7 +94,7 @@ test('change email', async t => {
       'fail to get verify change email token from email content'
     );
 
-    await changeEmail(app, u1.token.token, verifyEmailToken as string);
+    await changeEmail(app, u1.token.token, verifyEmailToken as string, u2Email);
 
     const afterNotificationMailCount = await getCurrentMailMessageCount();
 

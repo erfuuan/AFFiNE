@@ -31,7 +31,7 @@ export abstract class AutoRegisteredOAuthProvider
   protected abstract AFFiNEConfig: Config;
 
   get optionalConfig() {
-    return this.AFFiNEConfig.plugins.oauth?.providers[this.provider];
+    return this.AFFiNEConfig.plugins.oauth?.providers?.[this.provider];
   }
 
   get config() {

@@ -15,7 +15,7 @@ import { Config, getRequestResponseFromContext } from '../../fundamentals';
 import { parseAuthUserSeqNum, SessionService } from './session';
 
 function extractTokenFromHeader(authorization: string) {
-  if (!authorization.startsWith('Bearer ')) {
+  if (!/^Bearer\s/i.test(authorization)) {
     return null;
   }
 
@@ -70,7 +70,7 @@ export class AuthGuard implements CanActivate, OnModuleInit {
     else if (token) {
       const accessToken = extractTokenFromHeader(token);
       if (accessToken) {
-        const user = await this.session.validate(token);
+        const user = await this.session.validate(accessToken);
         if (user) {
           req.user = user;
         }

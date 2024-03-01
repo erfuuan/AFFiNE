@@ -57,7 +57,7 @@ export class UserType implements CurrentUser {
   @Field(() => String, { description: 'User avatar url', nullable: true })
   avatarUrl!: string | null;
 
-  @Field(() => Date, {
+  @Field(() => Boolean, {
     description: 'User email verified',
   })
   emailVerified!: boolean;
@@ -66,6 +66,13 @@ export class UserType implements CurrentUser {
     description: 'User password has been set',
   })
   hasPassword!: boolean;
+
+  @Field(() => Date, {
+    deprecationReason: 'useless',
+    description: 'User email verified',
+    nullable: true,
+  })
+  createdAt?: Date | null;
 }
 
 @ObjectType()
